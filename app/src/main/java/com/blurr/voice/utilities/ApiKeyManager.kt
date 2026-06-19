@@ -15,10 +15,12 @@ object ApiKeyManager {
     private const val KEY_API_KEY = "openrouter_api_key"
     private const val KEY_MODEL = "openrouter_model"
 
-    const val DEFAULT_MODEL = "google/gemma-3-27b-it:free"
+    const val DEFAULT_MODEL = "openrouter/auto"
 
     /** Free models available on OpenRouter — shown in Settings dropdown */
+
     val FREE_MODELS = listOf(
+        "openrouter/auto",
         "google/gemma-3-27b-it:free",
         "meta-llama/llama-3.1-8b-instruct:free",
         "mistralai/mistral-7b-instruct:free",
