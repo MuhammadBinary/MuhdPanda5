@@ -58,8 +58,9 @@ class GeminiApi(
         }
 
         return try {
-            Log.d(TAG, "Parsing JSON response: $jsonString")
-            jsonParser.decodeFromString<AgentOutput>(jsonString)
+            val cleanJson = extractJsonObject(jsonString)
+            Log.d(TAG, "Parsing JSON response: $cleanJson")
+            jsonParser.decodeFromString<AgentOutput>(cleanJson)
         } catch (e: Exception) {
             Log.e(TAG, "Failed to parse JSON into AgentOutput: ${e.message}", e)
             null
@@ -77,16 +78,22 @@ class GeminiApi(
         // Build OpenAI-compatible messages array
         val messagesArray = JSONArray()
         messages.forEach { msg ->
-            val openAiRole = when (msg.role) {
-                MessageRole.MODEL -> "assistant"
-                MessageRole.TOOL -> "tool"
+            val openAiRole = when {
+                msg.role == MessageRole.MODEL -> "assistant"
+                msg.role == MessageRole.TOOL -> "tool"
+                messagesArray.length() == 0 && msg.role == MessageRole.USER -> "system"
                 else -> "user"
             }
             val text = msg.parts.filterIsInstance<TextPart>().joinToString("\n") { it.text }
             if (text.isNotBlank()) {
+                val content = if (messagesArray.length() == 0) {
+                    "$text\n\nImportant: Return only a valid JSON object matching the requested schema. Do not use markdown fences or add prose."
+                } else {
+                    text
+                }
                 messagesArray.put(JSONObject().apply {
                     put("role", openAiRole)
-                    put("content", text)
+                    put("content", content)
                 })
             }
         }
@@ -94,8 +101,6 @@ class GeminiApi(
         val payload = JSONObject().apply {
             put("model", model)
             put("messages", messagesArray)
-            // Ask for JSON output so AgentOutput parsing works
-            put("response_format", JSONObject().put("type", "json_object"))
         }
 
         val request = Request.Builder()
@@ -103,7 +108,7 @@ class GeminiApi(
             .post(payload.toString().toRequestBody(JSON_MEDIA_TYPE))
             .addHeader("Authorization", "Bearer $apiKey")
             .addHeader("Content-Type", "application/json")
-            .addHeader("HTTP-Referer", "com.blurr.voice")
+            .addHeader("HTTP-Referer", "https://github.com/Ayush0Chaudhary/blurr")
             .addHeader("X-Title", "Blurr AI v2")
             .build()
 
@@ -129,6 +134,19 @@ class GeminiApi(
         val messages = listOf(GeminiMessage(prompt))
         return retryWithBackoff(times = maxRetry) { performApiCall(messages) }
     }
+}
+
+private fun extractJsonObject(response: String): String {
+    val trimmed = response.trim()
+        .removePrefix("```json")
+        .removePrefix("```")
+        .removeSuffix("```")
+        .trim()
+    if (trimmed.startsWith("{") && trimmed.endsWith("}")) return trimmed
+
+    val start = trimmed.indexOf('{')
+    val end = trimmed.lastIndexOf('}')
+    return if (start >= 0 && end > start) trimmed.substring(start, end + 1) else trimmed
 }
 
 class ContentBlockedException(message: String) : Exception(message)

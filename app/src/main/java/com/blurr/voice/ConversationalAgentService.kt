@@ -935,7 +935,7 @@ class ConversationalAgentService : Service() {
     }
     private fun parseModelResponse(response: String): ModelDecision {
         try {
-            val json = JSONObject(response)
+            val json = JSONObject(extractJsonObject(response))
             Log.d("justchecking", json.toString())
             // Use optString for safety, providing a default value if the key doesn't exist.
             val type = json.optString("Type", "Reply")
@@ -961,6 +961,19 @@ class ConversationalAgentService : Service() {
             return ModelDecision(reply = "I had a minor issue processing that. Could you try again?")
         }
     }
+    private fun extractJsonObject(response: String): String {
+        val trimmed = response.trim()
+            .removePrefix("```json")
+            .removePrefix("```")
+            .removeSuffix("```")
+            .trim()
+        if (trimmed.startsWith("{") && trimmed.endsWith("}")) return trimmed
+
+        val start = trimmed.indexOf('{')
+        val end = trimmed.lastIndexOf('}')
+        return if (start >= 0 && end > start) trimmed.substring(start, end + 1) else trimmed
+    }
+
     private fun createNotification(): Notification {
         val stopIntent = Intent(this, ConversationalAgentService::class.java).apply {
             action = ACTION_STOP_SERVICE

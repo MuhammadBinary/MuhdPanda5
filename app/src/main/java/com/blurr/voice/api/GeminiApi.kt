@@ -78,7 +78,7 @@ object GeminiApi {
                     .post(payload.toString().toRequestBody("application/json".toMediaType()))
                     .addHeader("Authorization", "Bearer $apiKey")
                     .addHeader("Content-Type", "application/json")
-                    .addHeader("HTTP-Referer", "com.blurr.voice")
+                    .addHeader("HTTP-Referer", "https://github.com/Ayush0Chaudhary/blurr")
                     .addHeader("X-Title", "Blurr AI")
                     .build()
 
@@ -112,14 +112,26 @@ object GeminiApi {
     /** Convert Gemini-style chat history to OpenAI messages array */
     private fun buildOpenAiMessages(chat: List<Pair<String, List<Any>>>): JSONArray {
         val array = JSONArray()
-        chat.forEach { (role, parts) ->
-            // Map "model" role (Gemini) → "assistant" (OpenAI)
-            val openAiRole = if (role.lowercase() == "model") "assistant" else role.lowercase()
+        chat.forEachIndexed { index, (role, parts) ->
+            // Map Gemini roles to OpenAI roles. The first long instruction prompt is a
+            // system prompt in practice; sending it as system makes OpenRouter models
+            // follow the required JSON contract much more reliably.
+            val openAiRole = when {
+                index == 0 && role.equals("user", ignoreCase = true) -> "system"
+                role.equals("model", ignoreCase = true) -> "assistant"
+                role.equals("system", ignoreCase = true) -> "system"
+                else -> "user"
+            }
             val textContent = parts.filterIsInstance<TextPart>().joinToString("\n") { it.text }
             if (textContent.isNotBlank()) {
+                val content = if (index == 0) {
+                    "$textContent\n\nImportant: Return only the exact JSON object requested by these instructions. Do not wrap it in markdown or add extra text."
+                } else {
+                    textContent
+                }
                 array.put(JSONObject().apply {
                     put("role", openAiRole)
-                    put("content", textContent)
+                    put("content", content)
                 })
             }
         }
