@@ -1213,11 +1213,12 @@ class ConversationalAgentService : Service() {
                 )
 
                 // Append the conversation to the user's conversationHistory array
-                db?.collection("users").document(currentUser.uid)
-                    .update("conversationHistory", FieldValue.arrayUnion(conversationEntry))
-                    .await()
-
-                Log.d("ConvAgent", "Successfully tracked conversation start in Firebase for user ${currentUser.uid}: $conversationId")
+                db?.let { fs ->
+                    fs.collection("users").document(currentUser.uid)
+                        .update("conversationHistory", FieldValue.arrayUnion(conversationEntry))
+                        .await()
+                    Log.d("ConvAgent", "Successfully tracked conversation start in Firebase for user ${currentUser.uid}: $conversationId")
+                }
             } catch (e: Exception) {
                 Log.e("ConvAgent", "Failed to track conversation start in Firebase", e)
                 // Don't fail the conversation if Firebase tracking fails
@@ -1247,11 +1248,12 @@ class ConversationalAgentService : Service() {
                 )
 
                 // Append the message to the user's messageHistory array
-                db?.collection("users").document(currentUser.uid)
-                    .update("messageHistory", FieldValue.arrayUnion(messageEntry))
-                    .await()
-
-                Log.d("ConvAgent", "Successfully tracked message in Firebase: $role - ${message.take(50)}...")
+                db?.let { fs ->
+                    fs.collection("users").document(currentUser.uid)
+                        .update("messageHistory", FieldValue.arrayUnion(messageEntry))
+                        .await()
+                    Log.d("ConvAgent", "Successfully tracked message in Firebase: $role - ${message.take(50)}...")
+                }
             } catch (e: Exception) {
                 Log.e("ConvAgent", "Failed to track message in Firebase", e)
             }
@@ -1284,11 +1286,12 @@ class ConversationalAgentService : Service() {
                 )
 
                 // Append the completion status to the user's conversationHistory array
-                db?.collection("users").document(currentUser.uid)
-                    .update("conversationHistory", FieldValue.arrayUnion(completionEntry))
-                    .await()
-
-                Log.d("ConvAgent", "Successfully tracked conversation end in Firebase: $conversationId ($endReason)")
+                db?.let { fs ->
+                    fs.collection("users").document(currentUser.uid)
+                        .update("conversationHistory", FieldValue.arrayUnion(completionEntry))
+                        .await()
+                    Log.d("ConvAgent", "Successfully tracked conversation end in Firebase: $conversationId ($endReason)")
+                }
             } catch (e: Exception) {
                 Log.e("ConvAgent", "Failed to track conversation end in Firebase", e)
             }
@@ -1333,7 +1336,8 @@ class ConversationalAgentService : Service() {
         }
 
         Log.d("ConvAgent", "Starting async memory fetch for user: ${currentUser.uid}")
-        db?.collection("users").document(currentUser.uid)
+        db?.let { fs ->
+            fs.collection("users").document(currentUser.uid)
             .addSnapshotListener { snapshot, e ->
                 if (e != null) {
                     Log.w("ConvAgent", "Listen failed.", e)
