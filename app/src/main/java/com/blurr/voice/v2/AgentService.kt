@@ -303,11 +303,12 @@ class AgentService : Service() {
             )
 
             // Append the task to the user's taskHistory array
-            db?.collection("users").document(currentUser.uid)
-                .update("taskHistory", FieldValue.arrayUnion(taskEntry))
-                .await()
-
-            Log.d(TAG, "Successfully tracked task start in Firebase for user ${currentUser.uid}: $task")
+            db?.let { fs ->
+                fs.collection("users").document(currentUser.uid)
+                    .update("taskHistory", FieldValue.arrayUnion(taskEntry))
+                    .await()
+                Log.d(TAG, "Successfully tracked task start in Firebase for user ${currentUser.uid}: $task")
+            }
         } catch (e: Exception) {
             Log.e(TAG, "Failed to track task in Firebase", e)
             // Don't fail the task execution if Firebase tracking fails
@@ -337,11 +338,12 @@ class AgentService : Service() {
             )
 
             // Append the completion status to the user's taskHistory array
-            db?.collection("users").document(currentUser.uid)
-                .update("taskHistory", FieldValue.arrayUnion(completionEntry))
-                .await()
-
-            Log.d(TAG, "Successfully tracked task completion in Firebase for user ${currentUser.uid}: $task (success: $success)")
+            db?.let { fs ->
+                fs.collection("users").document(currentUser.uid)
+                    .update("taskHistory", FieldValue.arrayUnion(completionEntry))
+                    .await()
+                Log.d(TAG, "Successfully tracked task completion in Firebase for user ${currentUser.uid}: $task (success: $success)")
+            }
         } catch (e: Exception) {
             Log.e(TAG, "Failed to track task completion in Firebase", e)
         }
