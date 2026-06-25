@@ -221,7 +221,7 @@ class ConversationalAgentService : Service() {
             startForeground(NOTIFICATION_ID, createNotification())
         } catch (e: SecurityException) {
             serviceScope.launch {
-                speechCoordinator.speakText("Hello, please give microphone permission or some other type of permission you have not given me! My code is open source, so you can check that out if you have any doubts.")
+                speechCoordinator.speakText("Hello, please give microphone permission or some other type of permission you have not given me! My code is open source, so you can check that out if you want!")
                 delay(2000) // Wait for TTS to complete before closing service
                 stopSelf()
             }
@@ -713,29 +713,6 @@ class ConversationalAgentService : Service() {
         }
     }
 
-    //    private suspend fun getGroundedStepsForTask(taskInstruction: String): String {
-//        Log.d("ConvAgent", "Performing grounded search for task: '$taskInstruction'")
-//
-//        // We create a specific prompt for the search.
-//        val searchPrompt = """
-//        Search the web and provide a concise, step-by-step guide for a human assistant to perform the following task on an Android phone: '$taskInstruction'.
-//        Focus on the exact taps and settings involved.
-//    """.trimIndent()
-//
-//        // Here we use the direct REST API call with search that we created previously.
-//        // We need an instance of GeminiApi to call it.
-//        // NOTE: You might need to adjust how you get your GeminiApi instance.
-//        // For now, we'll assume we can create one or access it.
-//        val geminiApi = GeminiApi("gemini-2.5-flash", ApiKeyManager, 2)
-//
-//        val searchResult = geminiApi.generateGroundedContent(searchPrompt)
-//        Log.d("CONVO_SEARCH", searchResult.toString())
-//        return if (!searchResult.isNullOrBlank()) {
-//            searchResult
-//        } else {
-//            ""
-//        }
-//    }
     private suspend fun checkIfClarificationNeeded(instruction: String): Pair<Boolean, List<String>> {
         Log.d("ConvAgent", "Checking for clarification on instruction: '$instruction'")
         return Pair(false, listOf())
@@ -832,6 +809,7 @@ class ConversationalAgentService : Service() {
         }
         Log.d("ConvAgent", "System prompt updated with time: $formattedTime")
     }
+
     private fun updateSystemPromptWithAgentStatus() {
         val currentPromptText = conversationHistory.firstOrNull()?.second
             ?.filterIsInstance<TextPart>()?.firstOrNull()?.text ?: return
@@ -933,6 +911,7 @@ class ConversationalAgentService : Service() {
             emptyList()
         }
     }
+
     private fun parseModelResponse(response: String): ModelDecision {
         try {
             val json = JSONObject(response)
@@ -961,6 +940,7 @@ class ConversationalAgentService : Service() {
             return ModelDecision(reply = "I had a minor issue processing that. Could you try again?")
         }
     }
+
     private fun createNotification(): Notification {
         val stopIntent = Intent(this, ConversationalAgentService::class.java).apply {
             action = ACTION_STOP_SERVICE
@@ -997,89 +977,47 @@ class ConversationalAgentService : Service() {
         }
     }
 
-    /**
-     * Displays a list of futuristic-styled clarification questions at the top of the screen.
-     * Each question animates in from the top with a fade-in effect.
-     *
-     * @param questions The list of question strings to display.
-     */
     private fun displayClarificationQuestions(questions: List<String>) {
         mainHandler.post {
-            // First, remove any questions that might already be on screen
-
-            val topMargin = 100 // Base margin from the very top of the screen
-            val verticalSpacing = 20 // Space between question boxes
-            var accumulatedHeight = 0 // Tracks the vertical space used by previous questions
-
-            questions.forEachIndexed { index, questionText ->
-                // 1. Create and style the TextView
-                val textView = TextView(this).apply {
-                    text = questionText
-                    // --- (Your existing styling code is perfect, no changes needed here) ---
-                    val glowEffect = GradientDrawable(
-                        GradientDrawable.Orientation.BL_TR,
-                        intArrayOf("#BE63F3".toColorInt(), "#5880F7".toColorInt())
-                    ).apply { cornerRadius = 32f }
-
-                    val glassBackground = GradientDrawable(
-                        GradientDrawable.Orientation.TL_BR,
-                        intArrayOf(0xEE0D0D2E.toInt(), 0xEE2A0D45.toInt())
-                    ).apply {
-                        cornerRadius = 28f
-                        setStroke(1, 0x80FFFFFF.toInt())
-                    }
-
-                    val layerDrawable = LayerDrawable(arrayOf(glowEffect, glassBackground)).apply {
-                        setLayerInset(1, 4, 4, 4, 4)
-                    }
-                    background = layerDrawable
-                    setTextColor(0xFFE0E0E0.toInt())
-                    textSize = 15f
-                    setPadding(40, 24, 40, 24)
-                    typeface = Typeface.MONOSPACE
-                }
-
-                textView.measure(
-                    View.MeasureSpec.makeMeasureSpec((windowManager.defaultDisplay.width * 0.9).toInt(), View.MeasureSpec.EXACTLY),
-                    View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
-                )
-                val viewHeight = textView.measuredHeight
-
-                // B. Pre-calculate the final Y position using the current accumulated height.
-                val finalYPosition = topMargin + accumulatedHeight
-
-                // C. Update accumulatedHeight for the *next* view in the loop.
-                accumulatedHeight += viewHeight + verticalSpacing
-                // **--- END OF FIX ---**
-
-
-                // 2. Prepare layout params
-                val params = WindowManager.LayoutParams(
-                    (windowManager.defaultDisplay.width * 0.9).toInt(), // 90% of screen width
-                    WindowManager.LayoutParams.WRAP_CONTENT,
-                    WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
-                    WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE,
-                    PixelFormat.TRANSLUCENT
-                ).apply {
-                    gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
-                    // Initial animation state: off-screen at the top and fully transparent
-                    y = -viewHeight // Start above the screen
-                    alpha = 0f
-                }
-
-                // 3. Add the view and start the animation
+            clarificationQuestionViews.clear()
+            questions.forEachIndexed { index, question ->
                 try {
+                    val textView = TextView(this).apply {
+                        text = question
+                        setTextColor(0xFFFFFFFF.toInt())
+                        textSize = 14f
+                        setPadding(20, 15, 20, 15)
+                        background = GradientDrawable(
+                            GradientDrawable.Orientation.TL_BR,
+                            intArrayOf(0xFF6A0572.toInt(), 0xFF2A0845.toInt())
+                        ).apply {
+                            cornerRadius = 12f
+                            setStroke(1, 0xFFB366FF.toInt())
+                        }
+                    }
+
+                    val params = WindowManager.LayoutParams(
+                        WindowManager.LayoutParams.WRAP_CONTENT,
+                        WindowManager.LayoutParams.WRAP_CONTENT,
+                        WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+                        WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE,
+                        PixelFormat.TRANSLUCENT
+                    ).apply {
+                        gravity = Gravity.CENTER_HORIZONTAL or Gravity.BOTTOM
+                        y = 150 + (index * 80) // Offset each question vertically
+                    }
+
                     windowManager.addView(textView, params)
                     clarificationQuestionViews.add(textView)
 
-                    // Animate the view from its starting position to the calculated finalYPosition
-                    val animator = ValueAnimator.ofFloat(0f, 1f).apply {
-                        duration = 500L
-                        startDelay = (index * 150).toLong() // Stagger animation
-
-                        addUpdateListener { animation ->
-                            val progress = animation.animatedValue as Float
-                            // Animate Y position from its off-screen start to its final place
+                    // Animate in
+                    val animator = ValueAnimator.ofFloat(0f, 1f)
+                    animator.duration = 300
+                    animator.addUpdateListener { animation ->
+                        val progress = animation.animatedValue as Float
+                        if (index < clarificationQuestionViews.size) {
+                            val viewHeight = textView.height
+                            val finalYPosition = 150 + (index * 80)
                             params.y = (finalYPosition * progress - viewHeight * (1 - progress)).toInt()
                             params.alpha = progress
                             windowManager.updateViewLayout(textView, params)
@@ -1142,7 +1080,167 @@ class ConversationalAgentService : Service() {
             
             // 3. Stop the service
             stopSelf()
+    }
 
+    override fun onDestroy() {
+        super.onDestroy()
+        Log.d("ConvAgent", "Service onDestroy")
+
+        try { firebaseAnalytics.logEvent("conversation_service_destroyed", null) } catch (_: Exception) {}
+
+        removeClarificationQuestions()
+        serviceScope.cancel()
+        isRunning = false
+        
+        // Stop state monitoring and set final state
+        pandaStateManager.setState(PandaState.IDLE)
+        pandaStateManager.stopMonitoring()
+        visualFeedbackManager.hideSmallDeltaGlow()
+        visualFeedbackManager.hideSpeakingOverlay()
+        // USE the new manager to hide the wave and transcription view
+        visualFeedbackManager.hideTtsWave()
+        visualFeedbackManager.hideTranscription()
+        visualFeedbackManager.hideInputBox()
+
+    }
+
+    override fun onBind(intent: Intent?): IBinder? = null
+
+    private fun fetchMemories() {
+        val currentUser = auth?.currentUser
+        if (currentUser == null) {
+            Log.w("ConvAgent", "User not logged in, cannot fetch memories")
+            return
+        }
+
+        Log.d("ConvAgent", "Starting async memory fetch for user: ${currentUser.uid}")
+        db?.let { fs ->
+            fs.collection("users").document(currentUser.uid)
+            .addSnapshotListener { snapshot, e ->
+                if (e != null) {
+                    Log.w("ConvAgent", "Listen failed for memories.", e)
+                    return@addSnapshotListener
+                }
+
+                if (snapshot != null && snapshot.exists()) {
+                    try {
+                        @Suppress("UNCHECKED_CAST")
+                        val memoriesList = snapshot.get("memories") as? List<Map<String, Any>> ?: emptyList()
+                        
+                        // Convert to UserMemory objects
+                        cachedMemories = memoriesList.mapNotNull { memoryMap ->
+                            try {
+                                UserMemory(
+                                    id = memoryMap["id"] as? String ?: return@mapNotNull null,
+                                    text = memoryMap["text"] as? String ?: "",
+                                    source = memoryMap["source"] as? String ?: "user",
+                                    timestamp = memoryMap["timestamp"] as? Long ?: System.currentTimeMillis()
+                                )
+                            } catch (ex: Exception) {
+                                Log.e("ConvAgent", "Error converting memory map", ex)
+                                null
+                            }
+                        }
+                        
+                        Log.d("ConvAgent", "Fetched ${cachedMemories.size} memories")
+                    } catch (ex: Exception) {
+                        Log.e("ConvAgent", "Error processing memories snapshot", ex)
+                    }
+                } else {
+                    Log.d("ConvAgent", "No memories document found")
+                    cachedMemories = emptyList()
+                }
+            }
+        }
+    }
+
+    private fun trackMessage(sender: String, message: String, messageType: String) {
+        val currentUser = auth?.currentUser
+        if (currentUser == null || conversationId == null) {
+            Log.w("ConvAgent", "Cannot track message, user not logged in or no conversation ID")
+            return
+        }
+
+        serviceScope.launch {
+            try {
+                val messageEntry = hashMapOf(
+                    "sender" to sender,
+                    "message" to message,
+                    "type" to messageType,
+                    "timestamp" to Timestamp.now()
+                )
+
+                db?.collection("users")?.document(currentUser.uid)
+                    ?.collection("conversations")?.document(conversationId!!)
+                    ?.collection("messages")?.add(messageEntry)
+                    ?.addOnFailureListener { e ->
+                        Log.e("ConvAgent", "Error tracking message", e)
+                    }
+            } catch (e: Exception) {
+                Log.e("ConvAgent", "Error in trackMessage", e)
+            }
+        }
+    }
+
+    private fun triggerMemoryGeneration() {
+        // This would trigger the memory generation from conversation
+        Log.d("ConvAgent", "Memory generation triggered for conversation")
+    }
+
+    private fun trackConversationStart() {
+        val currentUser = auth?.currentUser
+        if (currentUser == null) {
+            Log.w("ConvAgent", "Cannot track conversation, user is not logged in.")
+            return
+        }
+
+        // Generate a unique conversation ID
+        conversationId = "${System.currentTimeMillis()}_${currentUser.uid.take(8)}"
+
+        serviceScope.launch {
+            try {
+                val conversationEntry = hashMapOf(
+                    "conversationId" to conversationId,
+                    "startedAt" to Timestamp.now(),
+                    "endedAt" to null,
+                    "status" to "active"
+                )
+
+                db?.collection("users")?.document(currentUser.uid)
+                    ?.collection("conversations")?.document(conversationId!!)
+                    ?.set(conversationEntry)
+                    ?.addOnFailureListener { e ->
+                        Log.e("ConvAgent", "Error tracking conversation start", e)
+                    }
+            } catch (e: Exception) {
+                Log.e("ConvAgent", "Error in trackConversationStart", e)
+            }
+        }
+    }
+
+    private fun trackConversationEnd(endReason: String) {
+        val currentUser = auth?.currentUser
+        if (currentUser == null || conversationId == null) {
+            Log.w("ConvAgent", "Cannot track conversation end, user not logged in or no conversation ID")
+            return
+        }
+
+        serviceScope.launch {
+            try {
+                db?.collection("users")?.document(currentUser.uid)
+                    ?.collection("conversations")?.document(conversationId!!)
+                    ?.update(
+                        "endedAt" to Timestamp.now(),
+                        "status" to "ended",
+                        "endReason" to endReason
+                    )
+                    ?.addOnFailureListener { e ->
+                        Log.e("ConvAgent", "Error tracking conversation end", e)
+                    }
+            } catch (e: Exception) {
+                Log.e("ConvAgent", "Error in trackConversationEnd", e)
+            }
+        }
     }
 
     /**
@@ -1182,233 +1280,4 @@ class ConversationalAgentService : Service() {
 
         stopSelf()
     }
-
-    /**
-     * Tracks the conversation start in Firebase by creating a new conversation entry.
-     * This method is inspired by AgentService's Firebase operations.
-     */
-    private fun trackConversationStart() {
-        val currentUser = auth?.currentUser
-        if (currentUser == null) {
-            Log.w("ConvAgent", "Cannot track conversation, user is not logged in.")
-            return
-        }
-
-        // Generate a unique conversation ID
-        conversationId = "${System.currentTimeMillis()}_${currentUser.uid.take(8)}"
-
-        serviceScope.launch {
-            try {
-                val conversationEntry = hashMapOf(
-                    "conversationId" to conversationId,
-                    "startedAt" to Timestamp.now(),
-                    "endedAt" to null,
-                    "messageCount" to 0,
-                    "textModeUsed" to false,
-                    "clarificationAttempts" to 0,
-                    "sttErrorAttempts" to 0,
-                    "endReason" to null, // "graceful", "instant", "command", "model", "stt_errors"
-                    "tasksRequested" to 0,
-                    "tasksExecuted" to 0
-                )
-
-                // Append the conversation to the user's conversationHistory array
-                db?.let { fs ->
-                    fs.collection("users").document(currentUser.uid)
-                        .update("conversationHistory", FieldValue.arrayUnion(conversationEntry))
-                        .await()
-                    Log.d("ConvAgent", "Successfully tracked conversation start in Firebase for user ${currentUser.uid}: $conversationId")
-                }
-            } catch (e: Exception) {
-                Log.e("ConvAgent", "Failed to track conversation start in Firebase", e)
-                // Don't fail the conversation if Firebase tracking fails
-            }
-        }
-    }
-
-    /**
-     * Tracks individual messages in the conversation.
-     * Fire and forget operation.
-     */
-    private fun trackMessage(role: String, message: String, messageType: String = "text") {
-        val currentUser = auth?.currentUser
-        if (currentUser == null || conversationId == null) {
-            return
-        }
-
-        serviceScope.launch {
-            try {
-                val messageEntry = hashMapOf(
-                    "conversationId" to conversationId,
-                    "role" to role, // "user" or "model"
-                    "message" to message.take(500), // Limit message length for storage
-                    "messageType" to messageType, // "text", "task", "clarification"
-                    "timestamp" to Timestamp.now(),
-                    "inputMode" to if (isTextModeActive) "text" else "voice"
-                )
-
-                // Append the message to the user's messageHistory array
-                db?.let { fs ->
-                    fs.collection("users").document(currentUser.uid)
-                        .update("messageHistory", FieldValue.arrayUnion(messageEntry))
-                        .await()
-                    Log.d("ConvAgent", "Successfully tracked message in Firebase: $role - ${message.take(50)}...")
-                }
-            } catch (e: Exception) {
-                Log.e("ConvAgent", "Failed to track message in Firebase", e)
-            }
-        }
-    }
-
-    /**
-     * Updates the conversation completion status in Firebase.
-     * Fire and forget operation.
-     */
-    private fun trackConversationEnd(endReason: String, tasksRequested: Int = 0, tasksExecuted: Int = 0) {
-        val currentUser = auth?.currentUser
-        if (currentUser == null || conversationId == null) {
-            return
-        }
-
-        serviceScope.launch {
-            try {
-                val completionEntry = hashMapOf(
-                    "conversationId" to conversationId,
-                    "endedAt" to Timestamp.now(),
-                    "messageCount" to conversationHistory.size,
-                    "textModeUsed" to isTextModeActive,
-                    "clarificationAttempts" to clarificationAttempts,
-                    "sttErrorAttempts" to sttErrorAttempts,
-                    "endReason" to endReason,
-                    "tasksRequested" to tasksRequested,
-                    "tasksExecuted" to tasksExecuted,
-                    "status" to "completed"
-                )
-
-                // Append the completion status to the user's conversationHistory array
-                db?.let { fs ->
-                    fs.collection("users").document(currentUser.uid)
-                        .update("conversationHistory", FieldValue.arrayUnion(completionEntry))
-                        .await()
-                    Log.d("ConvAgent", "Successfully tracked conversation end in Firebase: $conversationId ($endReason)")
-                }
-            } catch (e: Exception) {
-                Log.e("ConvAgent", "Failed to track conversation end in Firebase", e)
-            }
-        }
-    }
-
-    override fun onDestroy() {
-        super.onDestroy()
-        Log.d("ConvAgent", "Service onDestroy")
-        
-        overlayManager.stopObserving()
-        try { firebaseAnalytics.logEvent("conversational_agent_destroyed", null) } catch (_: Exception) {}
-        
-        // Track conversation end if not already tracked
-        if (conversationId != null) {
-            trackConversationEnd("service_destroyed")
-        }
-        
-        removeClarificationQuestions()
-        serviceScope.cancel()
-        isRunning = false
-        
-        // Stop state monitoring and set final state
-        pandaStateManager.setState(PandaState.IDLE)
-        pandaStateManager.stopMonitoring()
-        visualFeedbackManager.hideSmallDeltaGlow()
-        visualFeedbackManager.hideSpeakingOverlay() // <-- ADD THIS LINE
-        // USE the new manager to hide the wave and transcription view
-        visualFeedbackManager.hideTtsWave()
-        visualFeedbackManager.hideTranscription()
-        visualFeedbackManager.hideInputBox()
-
-    }
-
-    override fun onBind(intent: Intent?): IBinder? = null
-
-    private fun fetchMemories() {
-        val currentUser = auth?.currentUser
-        if (currentUser == null) {
-            Log.w("ConvAgent", "User not logged in, cannot fetch memories")
-            return
-        }
-
-        Log.d("ConvAgent", "Starting async memory fetch for user: ${currentUser.uid}")
-        db?.let { fs ->
-            fs.collection("users").document(currentUser.uid)
-            .addSnapshotListener { snapshot, e ->
-                if (e != null) {
-                    Log.w("ConvAgent", "Listen failed.", e)
-                    return@addSnapshotListener
-                }
-
-                if (snapshot != null && snapshot.exists()) {
-                    val memoriesList = snapshot.get("memories") as? List<Map<String, Any>>
-                    if (memoriesList != null) {
-                        cachedMemories = memoriesList.mapNotNull { map ->
-                            try {
-                                UserMemory(
-                                    id = map["id"] as? String ?: "",
-                                    text = map["text"] as? String ?: "",
-                                    source = map["source"] as? String ?: "User",
-                                    createdAt = (map["createdAt"] as? Timestamp)?.toDate() ?: java.util.Date()
-                                )
-                            } catch (e: Exception) {
-                                Log.e("ConvAgent", "Error parsing memory", e)
-                                null
-                            }
-                        }.sortedByDescending { it.createdAt } // Sort by newest first
-                        
-                        Log.d("ConvAgent", "Fetched ${cachedMemories.size} memories from Firestore")
-                    } else {
-                        Log.d("ConvAgent", "No memories field found in user document")
-                        cachedMemories = emptyList()
-                    }
-                } else {
-                    Log.d("ConvAgent", "Current data: null")
-                }
-            }
-    }
-
-    private fun triggerMemoryGeneration() {
-        val currentUser = auth?.currentUser
-        val userEmail = currentUser?.email
-
-        if (userEmail == null) {
-            Log.w("ConvAgent", "User email not found, cannot trigger memory generation")
-            return
-        }
-
-        Log.d("ConvAgent", "Triggering memory generation for email: $userEmail")
-
-        val json = JSONObject()
-        json.put("email", userEmail)
-
-        val requestBody = json.toString().toRequestBody("application/json; charset=utf-8".toMediaType())
-
-        val request = Request.Builder()
-            .url("https://getuserdatabyemail-w7fh6zvo4q-uc.a.run.app")
-            .addHeader("X-API-Key", "") // Cloud endpoint removed — no proxy key needed
-            .post(requestBody)
-            .build()
-
-        client.newCall(request).enqueue(object : Callback {
-            override fun onFailure(call: Call, e: IOException) {
-                Log.e("ConvAgent", "Memory generation request failed", e)
-            }
-
-            override fun onResponse(call: Call, response: Response) {
-                response.use {
-                    if (!response.isSuccessful) {
-                        Log.e("ConvAgent", "Memory generation request failed with code: ${response.code}")
-                    } else {
-                        Log.d("ConvAgent", "Memory generation request sent successfully. Response: ${response.body?.string()}")
-                    }
-                }
-            }
-        })
-    }
-
 }
