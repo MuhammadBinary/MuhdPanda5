@@ -144,7 +144,7 @@ class MainActivity : BaseNavigationActivity() {
             if (result.resultCode == RESULT_OK) {
                 Toast.makeText(this, "Set as default assistant successfully!", Toast.LENGTH_SHORT).show()
             } else {
-                Toast.makeText(this, "Couldn’t become default assistant. Opening settings…", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Couldn't become default assistant. Opening settings…", Toast.LENGTH_SHORT).show()
                 Logger.w("MainActivity", "Role request canceled or app not eligible.\n${explainAssistantEligibility()}")
                 openAssistantPickerSettings()
             }
@@ -417,7 +417,7 @@ class MainActivity : BaseNavigationActivity() {
     private fun showDisclaimerDialog() {
         val dialog = AlertDialog.Builder(this)
             .setTitle("Disclaimer")
-            .setMessage("Panda is an experimental AI assistant and is still in development. It may not always be accurate or perform as expected. It does small task better. Your understanding is appreciated!")
+            .setMessage("Panda is an experimental AI assistant and is still in development. It may not always be accurate or perform as expected. It does small task better. Your understanding is [...]
             .setPositiveButton("Okay") { dialog, _ ->
                 dialog.dismiss()
             }
@@ -733,7 +733,7 @@ class MainActivity : BaseNavigationActivity() {
                             Log.d("MainActivity", "Remote Config params updated: $updated")
 
                             // Get the message from the activated config
-                            val message = remoteConfig?.getString("developerMessage")
+                            val message = remoteConfig?.getString("developerMessage") ?: ""
 
                             if (message.isNotEmpty()) {
                                 // Your existing dialog logic
