@@ -417,7 +417,7 @@ class MainActivity : BaseNavigationActivity() {
     private fun showDisclaimerDialog() {
         val dialog = AlertDialog.Builder(this)
             .setTitle("Disclaimer")
-            .setMessage("Panda is an experimental AI assistant and is still in development. It may not always be accurate or perform as expected. It does small task better. Your understanding is [...]
+            .setMessage("Panda is an experimental AI assistant and is still in development. It may not always be accurate or perform as expected. Your understanding is appreciated.")
             .setPositiveButton("Okay") { dialog, _ ->
                 dialog.dismiss()
             }
